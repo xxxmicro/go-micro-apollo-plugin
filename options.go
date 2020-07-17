@@ -25,3 +25,12 @@ func WithNamespaceName(c string) source.Option {
 		o.Context = context.WithValue(o.Context, namespaceName{}, c)
 	}
 }
+
+func WithIp(c string) source.Option {
+	return func(o *source.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		o.Context = context.WithValue(o.Context, "ip", c)
+	}
+}

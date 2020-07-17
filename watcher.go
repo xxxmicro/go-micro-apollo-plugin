@@ -24,11 +24,16 @@ func (w *watcher) OnChange(changeEvent *storage.ChangeEvent) {
 func (w *watcher) Next() (*source.ChangeSet, error) {
 	select {
 	case event := <-w.eventChan:
+		log.Info(event.Changes)
+		content := event.Changes["content"].NewValue
+		log.Info("content")
+		log.Info(content)
+
 		cs := &source.ChangeSet{
 			Timestamp: time.Now(),
 			Format:    "yaml",
 			Source:    w.name,
-			Data:      []byte(event.Changes["content"].NewValue),
+			Data:      []byte(content),
 		}
 		cs.Checksum = cs.Sum()
 		return cs, nil

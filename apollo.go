@@ -5,10 +5,13 @@ import (
 	"github.com/micro/go-micro/v2/util/log"
 	"github.com/zouyx/agollo/v3"
 	"github.com/zouyx/agollo/v3/storage"
+	"github.com/zouyx/agollo/v3/env/config"
 	"time"
+	"fmt"
 )
 
 type apolloSource struct {
+	ip string
 	serviceName   string
 	namespaceName string
 	opts          source.Options
@@ -19,17 +22,19 @@ func (a *apolloSource) String() string {
 }
 
 func (a *apolloSource) Read() (*source.ChangeSet, error) {
-	//readyConfig := &config.AppConfig{
-	//	IsBackupConfig:   true,
-	//	BackupConfigPath: "./",
-	//	AppID:            "",
-	//	Cluster:          "default",
-	//	NamespaceName:    a.namespaceName,
-	//	IP:               "",
-	//}
-	//agollo.InitCustomConfig(func() (*config.AppConfig, error) {
-	//	return readyConfig, nil
-	//})
+	log.Logf(fmt.Sprintf("ip: %s, namespace: %s", a.ip, a.namespaceName))
+	
+	readyConfig := &config.AppConfig{
+		IsBackupConfig:   true,
+		BackupConfigPath: "./",
+		AppID:            "xpay-api",
+		Cluster:          "dev",
+		NamespaceName:    a.namespaceName,
+		IP:               a.ip,
+	}
+	agollo.InitCustomConfig(func() (*config.AppConfig, error) {
+		return readyConfig, nil
+	})
 
 	if err := agollo.Start(); err != nil {
 		log.Error(err)
@@ -69,5 +74,12 @@ func NewSource(opts ...source.Option) source.Source {
 	if ok {
 		nName = namespaceName
 	}
-	return &apolloSource{opts: options, namespaceName: nName}
+
+	ip, ok := options.Context.Value("ip").(string)
+	
+	return &apolloSource{
+		ip: ip,
+		opts: options, 
+		namespaceName: nName,
+	}
 }
