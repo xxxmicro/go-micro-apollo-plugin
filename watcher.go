@@ -15,15 +15,13 @@ type watcher struct {
 	exit      chan bool
 }
 
-func (w *watcher) OnChange(changeEvent *storage.ChangeEvent) {
-	log.Info("change listener.")
-	log.Info(changeEvent.Changes)
-	log.Info(changeEvent.Namespace)
-	
+func (w *watcher) OnChange(changeEvent *storage.ChangeEvent) {	
 	kv := map[string]string{}
 	for k, v := range changeEvent.Changes {
 		kv[k] = v.NewValue
 	}
+
+	log.Info(fmt.Sprinf("OnChange %v", kv))
 
 	d, err := makeMap(w.e, kv)
 	if err != nil {

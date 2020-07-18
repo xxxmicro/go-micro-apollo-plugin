@@ -25,8 +25,7 @@ func (a *apolloSource) Read() (*source.ChangeSet, error) {
 	kv := map[string]string{}
 	
 	c.Range(func(key interface{}, value interface{}) bool {
-		log.Info(key)
-		log.Info(string(value.([]byte)))
+		log.Info(fmt.Sprintf("%s=%s", key, string(value.([]byte)))
 		
 		kv[key.(string)] = string(value.([]byte))
 		return true
