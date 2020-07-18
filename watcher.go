@@ -22,7 +22,7 @@ func (w *watcher) OnChange(changeEvent *storage.ChangeEvent) {
 		kv[k] = v.NewValue
 	}
 
-	log.Info(fmt.Sprinf("OnChange %v", kv))
+	log.Info(fmt.Sprintf("OnChange %v", kv))
 
 	d, err := makeMap(w.e, kv)
 	if err != nil {
