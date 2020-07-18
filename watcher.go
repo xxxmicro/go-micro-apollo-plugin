@@ -6,6 +6,7 @@ import (
 	"github.com/micro/go-micro/v2/util/log"
 	"github.com/zouyx/agollo/v3/storage"
 	"time"
+	"fmt"
 )
 
 type watcher struct {
