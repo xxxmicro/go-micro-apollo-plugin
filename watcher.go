@@ -1,7 +1,7 @@
 package apollo
 
 import (
-	"errors"
+	"github.com/micro/go-micro/v2/config/encoder"
 	"github.com/micro/go-micro/v2/config/source"
 	"github.com/micro/go-micro/v2/util/log"
 	"github.com/zouyx/agollo/v3/storage"
@@ -9,51 +9,67 @@ import (
 )
 
 type watcher struct {
+	e encoder.Encoder
 	name      string
+	ch chan *source.ChangeSet
 	exit      chan bool
-	eventChan chan *storage.ChangeEvent
 }
 
 func (w *watcher) OnChange(changeEvent *storage.ChangeEvent) {
 	log.Info("change listener.")
 	log.Info(changeEvent.Changes)
 	log.Info(changeEvent.Namespace)
-	w.eventChan <- changeEvent
+	
+	kv := map[string]string{}
+	for k, v := range changeEvent.Changes {
+		kv[k] = v.NewValue
+	}
+
+	d, err := makeMap(w.e, kv)
+	if err != nil {
+		return
+	}
+
+	b, err := w.e.Encode(d)
+	if err != nil {
+		return
+	}
+
+	cs := &source.ChangeSet{
+		Timestamp: time.Now(),
+		Format:    w.e.String(),
+		Source:    w.name,
+		Data:      b,
+	}
+	cs.Checksum = cs.Sum()
+
+	w.ch <- cs
 }
 
 func (w *watcher) Next() (*source.ChangeSet, error) {
 	select {
-	case event := <-w.eventChan:
-		log.Info(event.Changes)
-		content := event.Changes["content"].NewValue
-		log.Info("content")
-		log.Info(content)
-
-		cs := &source.ChangeSet{
-			Timestamp: time.Now(),
-			Format:    "yaml",
-			Source:    w.name,
-			Data:      []byte(content),
-		}
-		cs.Checksum = cs.Sum()
+	case cs := <-w.ch:
 		return cs, nil
 	case <-w.exit:
-		return nil, errors.New("watcher stopped")
+		return nil, source.ErrWatcherStopped
 	}
 }
 
 func (w *watcher) Stop() error {
 	select {
 	case <-w.exit:
+		return nil
 	default:
+		// TODO apollo stop
 	}
 	return nil
 }
 
-func newWatcher(name string) (*watcher, error) {
+func newWatcher(name string, e encoder.Encoder) (*watcher, error) {
 	return &watcher{
+		e: 				 e,
 		name:      name,
 		exit:      make(chan bool),
-		eventChan: make(chan *storage.ChangeEvent),
+		ch: 			 make(chan *source.ChangeSet),
 	}, nil
 }

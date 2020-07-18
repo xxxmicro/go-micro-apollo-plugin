@@ -11,8 +11,6 @@ import (
 )
 
 type apolloSource struct {
-	ip string
-	serviceName   string
 	namespaceName string
 	opts          source.Options
 }
@@ -21,44 +19,40 @@ func (a *apolloSource) String() string {
 	return "apollo"
 }
 
-func (a *apolloSource) Read() (*source.ChangeSet, error) {
-	log.Logf(fmt.Sprintf("ip: %s, namespace: %s", a.ip, a.namespaceName))
-	
-	readyConfig := &config.AppConfig{
-		IsBackupConfig:   true,
-		BackupConfigPath: "./",
-		AppID:            "xpay-api",
-		Cluster:          "dev",
-		NamespaceName:    a.namespaceName,
-		IP:               a.ip,
-	}
-	agollo.InitCustomConfig(func() (*config.AppConfig, error) {
-		return readyConfig, nil
-	})
+func (a *apolloSource) Read() (*source.ChangeSet, error) {	
+	c := agollo.GetConfig(a.namespaceName).GetCache()
 
-	if err := agollo.Start(); err != nil {
-		log.Error(err)
+	kv := map[string]string{}
+	
+	c.Range(func(key interface{}, value interface{}) bool {
+		log.Info(key)
+		log.Info(string(value.([]byte)))
+		
+		kv[key.(string)] = string(value.([]byte))
+		return true
+	})
+	data, err := makeMap(a.opts.Encoder, kv)
+	if err != nil {
+		return nil, fmt.Errorf("error reading data: %v", err)
 	}
-	c := agollo.GetConfig(a.namespaceName)
-	content := []byte(c.GetValue("content"))
-	//b, err := a.opts.Encoder.Encode(content)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error reading source: %v", err)
-	//}
+
+	b, err := a.opts.Encoder.Encode(data)
+	if err != nil {
+		return nil, fmt.Errorf("error reading source: %v", err)
+	}
 
 	cs := &source.ChangeSet{
 		Timestamp: time.Now(),
-		// TODO 根据 namespaceName 适配
-		Format: "yaml",
+		Format: a.opts.Encoder.String(),
 		Source: a.String(),
-		Data:   content,
+		Data:   b,
 	}
 	cs.Checksum = cs.Sum()
 	return cs, nil
 }
 
 func (a *apolloSource) Watch() (source.Watcher, error) {
-	watcher, err := newWatcher(a.String())
+	watcher, err := newWatcher(a.String(), a.opts.Encoder)
 	storage.AddChangeListener(watcher)
 	return watcher, err
 }
@@ -69,17 +63,42 @@ func (a *apolloSource) Write(cs *source.ChangeSet) error {
 
 func NewSource(opts ...source.Option) source.Source {
 	options := source.NewOptions(opts...)
-	var nName string
-	namespaceName, ok := options.Context.Value(namespaceName{}).(string)
-	if ok {
-		nName = namespaceName
+	namespace, ok := options.Context.Value(namespaceName{}).(string)
+	
+	address, ok := options.Context.Value(addressKey{}).(string)	
+	
+	backupConfigPath, ok := options.Context.Value(backupConfigPathKey{}).(string)
+	if !ok {
+		backupConfigPath = "./config"
 	}
 
-	ip, ok := options.Context.Value("ip").(string)
-	
+	cluster, ok := options.Context.Value(clusterKey{}).(string)
+	if !ok {
+		cluster = "dev"
+	}
+
+	appId, ok := options.Context.Value(appIdKey{}).(string)
+
+	log.Logf(fmt.Sprintf("address: %s, namespace: %s", address, namespace))
+
+	readyConfig := &config.AppConfig{
+		IsBackupConfig:   true,
+		BackupConfigPath: backupConfigPath,
+		AppID:            appId,
+		Cluster:          cluster,
+		NamespaceName:    namespace,
+		IP:               address,
+	}
+	agollo.InitCustomConfig(func() (*config.AppConfig, error) {
+		return readyConfig, nil
+	})
+
+	if err := agollo.Start(); err != nil {
+		log.Error(err)
+	}
+
 	return &apolloSource{
-		ip: ip,
 		opts: options, 
-		namespaceName: nName,
+		namespaceName: namespace,
 	}
 }

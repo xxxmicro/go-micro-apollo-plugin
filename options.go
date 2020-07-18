@@ -5,19 +5,13 @@ import (
 	"github.com/micro/go-micro/v2/config/source"
 )
 
-type apolloConfPath struct{}
+type addressKey struct{}
 type namespaceName struct{}
+type clusterKey struct{}
+type appIdKey struct{}
+type backupConfigPathKey struct{}
 
-func WithApolloConfPath(c string) source.Option {
-	return func(o *source.Options) {
-		if o.Context == nil {
-			o.Context = context.Background()
-		}
-		o.Context = context.WithValue(o.Context, apolloConfPath{}, c)
-	}
-}
-
-func WithNamespaceName(c string) source.Option {
+func WithNamespace(c string) source.Option {
 	return func(o *source.Options) {
 		if o.Context == nil {
 			o.Context = context.Background()
@@ -26,11 +20,38 @@ func WithNamespaceName(c string) source.Option {
 	}
 }
 
-func WithIp(c string) source.Option {
+func WithAddress(c string) source.Option {
 	return func(o *source.Options) {
 		if o.Context == nil {
 			o.Context = context.Background()
 		}
-		o.Context = context.WithValue(o.Context, "ip", c)
+		o.Context = context.WithValue(o.Context, addressKey{}, c)
+	}
+}
+
+func WithBackupConfigPath(c string) source.Option {
+	return func(o *source.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		o.Context = context.WithValue(o.Context, backupConfigPathKey{}, c)
+	}
+}
+
+func WithAppId(c string) source.Option {
+	return func(o *source.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		o.Context = context.WithValue(o.Context, appIdKey{}, c)
+	}
+}
+
+func WithCluster(c string) source.Option {
+	return func(o *source.Options) {
+		if o.Context == nil {
+			o.Context = context.Background()
+		}
+		o.Context = context.WithValue(o.Context, clusterKey{}, c)
 	}
 }
